@@ -45,7 +45,7 @@ module.exports = (req, res) => {
           }
 
           // 2. Configurar Culqi
-          Culqi.publicKey = 'pk_live_GoS2dd3xMabcEJVx'; 
+          Culqi.publicKey = 'pk_live_GoS2dD3xMabcEJVx'; 
           Culqi.settings({
               title: 'TartarIA Solutions',
               currency: 'USD',
