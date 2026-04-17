@@ -1,5 +1,4 @@
 module.exports = (req, res) => {
-  // Le decimos a Vercel que esto es una página web HTML (El Popup)
   const html = `
   <!DOCTYPE html>
   <html lang="es">
@@ -24,35 +23,32 @@ module.exports = (req, res) => {
       <button class="btn" id="retry-btn" onclick="Culqi.open()">Reintentar Pago</button>
 
       <script>
-          // 1. Rescatar los datos que envió Lovable por la URL
+          // 1. Decodificar la maleta de seguridad de Lovable
           const urlParams = new URLSearchParams(window.location.search);
           let amount = 0, email = '', name = '', phone = '', planIds = [];
 
           try {
               if (urlParams.has('data')) {
-                  const parsed = JSON.parse(decodeURIComponent(urlParams.get('data')));
+                  let dataStr = urlParams.get('data');
+                  // AQUÍ ESTÁ LA MAGIA: Desencriptamos el Base64 que mandó Lovable
+                  let parsedStr = decodeURIComponent(atob(dataStr));
+                  let parsed = JSON.parse(parsedStr);
+                  
                   amount = parsed.amount || parsed.total || 0;
                   email = parsed.customerEmail || parsed.email || '';
                   name = parsed.customerName || parsed.name || '';
                   phone = parsed.phone || parsed.customerPhone || '';
                   planIds = parsed.planIds || parsed.plans || [];
-              } else {
-                  amount = parseInt(urlParams.get('amount') || urlParams.get('total') || '0');
-                  email = urlParams.get('email') || '';
-                  name = urlParams.get('name') || '';
-                  phone = urlParams.get('phone') || '';
-                  const rawPlans = urlParams.get('planIds') || '[]';
-                  planIds = rawPlans.startsWith('[') ? JSON.parse(rawPlans) : rawPlans.split(',');
               }
           } catch(e) {
               console.error("Error leyendo datos del carrito", e);
           }
 
-          // 2. Configurar Culqi con tu llave REAL (Lejos de GoHighLevel)
+          // 2. Configurar Culqi
           Culqi.publicKey = 'pk_live_GoS2dd3xMabcEJVx'; 
           Culqi.settings({
               title: 'TartarIA Solutions',
-              currency: 'USD', // Cambia a PEN si cobras en soles
+              currency: 'USD',
               amount: amount, 
           });
           Culqi.options({
@@ -61,10 +57,10 @@ module.exports = (req, res) => {
               paymentMethods: { tarjeta: true, yape: false, billetera: false, bancaMovil: false }
           });
 
-          // 3. Abrir Culqi automáticamente
+          // 3. Abrir Culqi
           setTimeout(() => { Culqi.open(); }, 800);
 
-          // 4. Capturar la tarjeta y procesar la suscripción
+          // 4. Capturar token
           function culqi() {
               if (Culqi.token) {
                   const token = Culqi.token.id;
@@ -73,7 +69,6 @@ module.exports = (req, res) => {
                   document.getElementById('retry-btn').style.display = 'none';
                   document.getElementById('spinner').style.display = 'block';
                   
-                  // Enviar el token a tu backend para que cree los clientes y planes
                   fetch('/api/checkout', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -86,7 +81,6 @@ module.exports = (req, res) => {
                           document.getElementById('substatus').innerText = "Ventana cerrándose...";
                           document.getElementById('spinner').style.display = 'none';
                           
-                          // Avisar a la web principal (GoHighLevel) que ya cobramos
                           window.opener.postMessage('PAYMENT_SUCCESS', '*');
                           setTimeout(() => window.close(), 1500);
                       } else {
@@ -101,7 +95,6 @@ module.exports = (req, res) => {
                   });
 
               } else {
-                  // Si cerraron la ventanita por error o la tarjeta no pasó
                   document.getElementById('status').innerText = "Pago pendiente";
                   document.getElementById('substatus').innerText = (Culqi.error && Culqi.error.user_message) ? Culqi.error.user_message : "La validación fue cancelada.";
                   document.getElementById('spinner').style.display = 'none';
