@@ -1,12 +1,10 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // --- LLAVES DE SEGURIDAD (CORS) ---
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Si es una petición de prueba del navegador, respondemos OK de inmediato
   if (req.method === 'OPTIONS') return res.status(200).end();
-  
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   const { token, email, name, phone, planIds } = req.body;
@@ -56,6 +54,7 @@ export default async function handler(req, res) {
     const suscripcionesCreadas = [];
 
     for (const planId of planes) {
+        if (!planId) continue;
         const subRes = await fetch('https://api.culqi.com/v2/subscriptions', {
           method: 'POST',
           headers: {
@@ -73,4 +72,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error de Culqi:', error);
-    res.status(400
+    res.status(400).json({ error: 'Error procesando la suscripción', details: error });
+  }
+};
